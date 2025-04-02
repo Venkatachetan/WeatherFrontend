@@ -1,0 +1,119 @@
+﻿@page "/history"
+@using WeatherFrontend.Models
+@using WeatherFrontend.Services
+@inject UserHistoryService UserHistoryService
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudPaper Elevation="3" Class="pa-4">
+        <MudText Typo="Typo.h4" Class="mb-4">Your Search History</MudText>
+
+        @if (_loading)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_authCheckFailed)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                You need to be logged in to view your search history.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NavigateToLogin">Log In</MudButton>
+        }
+        else if (_searchHistory.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                No search history found. Try searching for some weather data!
+            </MudAlert>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Error"
+                       OnClick="ClearAllHistory"
+                       Class="mb-4">
+                Clear All History
+            </MudButton>
+
+            <MudTable Items="@_searchHistory" Hover="true" Striped="true" Dense="true">
+                <ColGroup>
+                    <col style="width: 25%;" />
+                    <col style="width: 25%;" />
+                    <col style="width: 20%;" />
+                    <col style="width: 20%;" />
+                    <col style="width: 10%;" />
+                </ColGroup>
+                <HeaderContent>
+                    <MudTh>City</MudTh>
+                    <MudTh>Weather</MudTh>
+                    <MudTh>Temperature</MudTh>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="City">@context.CityName</MudTd>
+                    <MudTd DataLabel="Weather">@context.WeatherCondition</MudTd>
+                    <MudTd DataLabel="Temperature">@context.Temperature</MudTd>
+                    <MudTd DataLabel="Date">@context.SearchDate.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteHistoryItem(context.Id))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<UserSearchHistory> _searchHistory = new();
+    private bool _loading = true;
+    private bool _authCheckFailed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSearchHistory();
+    }
+
+    private async Task LoadSearchHistory()
+    {
+        _loading = true;
+        var authCheck = await AuthService.CheckAuth();
+
+        if (authCheck == null)
+        {
+            _authCheckFailed = true;
+            _loading = false;
+            return;
+        }
+
+        _searchHistory = await UserHistoryService.GetUserHistoryAsync();
+        _loading = false;
+    }
+
+    private async Task DeleteHistoryItem(string id)
+    {
+        var success = await UserHistoryService.DeleteSearchHistoryAsync(id);
+        if (success)
+        {
+            _searchHistory.RemoveAll(h => h.Id == id);
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearAllHistory()
+    {
+        var success = await UserHistoryService.ClearUserSearchHistoryAsync();
+        if (success)
+        {
+            _searchHistory.Clear();
+            StateHasChanged();
+        }
+    }
+
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+}

@@ -1,0 +1,23 @@
+﻿.search-container {
+    margin-top: -10px; /* Moves search bar up */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.search-input {
+    border-radius: 20px !important; /* Rounded search bar */
+    width: 100%;
+    font-size: 16px;
+    padding: 12px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.home-background {
+    background-image: url('/images/homeBG.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+    padding: 2rem;
+}

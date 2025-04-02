@@ -1,0 +1,88 @@
+﻿@page "/favorites"
+@using WeatherFrontend.Services
+@using WeatherFrontend.Models
+@inject FavoriteCityService FavoriteCityService
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+@using MudBlazor
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h3" GutterBottom="true">My Favorite Cities</MudText>
+    <!-- Favorite Cities List -->
+    <MudList T="FavoriteCity">
+        @if (favoriteCities != null)
+        {
+            @if (favoriteCities.Count == 0)
+            {
+                <MudText>No favorite cities added yet.</MudText>
+            }
+            else
+            {
+                @foreach (var city in favoriteCities)
+                {
+                    <MudListItem T="FavoriteCity">
+                        <MudGrid>
+                            <MudItem xs="6">
+                                @city.CityName (Added: @city.AddedDate.ToString("d"))
+                            </MudItem>
+                            <MudItem xs="6" Class="d-flex justify-end">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Class="mr-2"
+                                           OnClick="() => ViewCityDetails(city.CityName)">
+                                    View Details
+                                </MudButton>
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Error"
+                                           OnClick="() => RemoveCity(city.Id)">
+                                    Remove
+                                </MudButton>
+                            </MudItem>
+                        </MudGrid>
+                    </MudListItem>
+                }
+            }
+        }
+        else if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudText>Not authenticated. Please log in to view your favorite cities.</MudText>
+        }
+    </MudList>
+</MudContainer>
+
+@code {
+    private List<FavoriteCity> favoriteCities;
+    private string UserId = string.Empty;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get UserId from AuthService
+        var authResponse = await AuthService.CheckAuth();
+        if (authResponse != null)
+        {
+            UserId = authResponse.Id;
+            if (!string.IsNullOrEmpty(UserId))
+            {
+                favoriteCities = await FavoriteCityService.GetFavoriteCities(UserId);
+            }
+        }
+        isLoading = false;
+    }
+
+    private async Task RemoveCity(string cityId)
+    {
+        await FavoriteCityService.RemoveFavoriteCity(cityId);
+        favoriteCities?.RemoveAll(c => c.Id == cityId);
+    }
+
+    private void ViewCityDetails(string cityName)
+    {
+        // Navigate to the dashboard with the city parameter
+        NavigationManager.NavigateTo($"/dashboard?city={Uri.EscapeDataString(cityName)}");
+    }
+}

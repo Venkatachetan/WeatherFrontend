@@ -1,0 +1,77 @@
+﻿@inject NavigationManager Navigation
+@code {
+    private bool isExpanded = false;
+    void ToggleSidebar()
+    {
+        isExpanded = !isExpanded;
+    }
+}
+<div class="sidebar @(isExpanded ? "expanded" : "collapsed")">
+    <MudIconButton Icon="@Icons.Material.Filled.Menu" Class="sidebar-icon" @onclick="ToggleSidebar" />
+    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Home" Class="sidebar-item">
+        <span class="sidebar-text">Home</span>
+    </MudNavLink>
+    <MudNavLink Href="/favorites" Icon="@Icons.Material.Filled.Favorite" Class="sidebar-item">
+        <span class="sidebar-text">Favorites</span>
+    </MudNavLink>
+    <MudNavLink Href="/history" Icon="@Icons.Material.Filled.History" Class="sidebar-item">
+        <span class="sidebar-text">History</span>
+    </MudNavLink>
+  
+</div>
+<style>
+    .sidebar {
+        width: 200px;
+        height: 100%;
+        background-color: #ffffff;
+        box-shadow: 3px 0 10px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        padding-top: 10px;
+        transition: width 0.3s ease;
+        align-items: center;
+        gap: 10px;
+        overflow: hidden;
+        position: relative; /* Add positioning context */
+        z-index: 1; /* Ensure sidebar appears above content if needed */
+    }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+    .sidebar-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px;
+        text-decoration: none;
+        color: black;
+        transition: 0.3s;
+    }
+
+    .sidebar-text {
+        display: inline;
+        transition: opacity 0.3s ease;
+    }
+
+    .collapsed .sidebar-text {
+        display: none;
+    }
+
+    .sidebar-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: transparent;
+        cursor: pointer;
+    }
+
+    .sidebar-item:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+    }
+</style>

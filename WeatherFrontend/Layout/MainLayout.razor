@@ -1,0 +1,99 @@
+﻿@inherits LayoutComponentBase
+@using MudBlazor
+@using Blazored.LocalStorage
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ILocalStorageService LocalStorage
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+@if (!isAuthenticated && checkingAuth)
+{
+    <div class="d-flex justify-center align-center" style="height: 100vh">
+        <MudProgressCircular Indeterminate="true" />
+    </div>
+}
+else
+{
+    <MudLayout>
+        <MudAppBar>
+            <MudText Typo="Typo.h5" Class="ml-3">Weather</MudText>
+            <MudSpacer />
+            @if (isAuthenticated)
+            {
+                <MudButton OnClick="HandleLogout">Logout</MudButton>
+            }
+            else
+            {
+                <MudButton OnClick="@(() => Navigation.NavigateTo("/login"))">Login</MudButton>
+            }
+        </MudAppBar>
+
+        <div class="layout-container">
+            @* Sidebar *@
+            @if (isAuthenticated)
+            {
+                <NavMenu />
+            }
+            @* Main Content Area *@
+            <MudMainContent Class="main-content-wrapper">
+                <div class="main-content-container">
+                    @Body
+                </div>
+            </MudMainContent>
+        </div>
+    </MudLayout>
+}
+<style>
+    .layout-container {
+        display: flex;
+        height: calc(100vh - 64px);
+        margin-top: 64px; /* This ensures content starts below the AppBar */
+    }
+
+    .main-content-wrapper {
+        flex-grow: 1;
+        display: flex;
+        padding: 10px;
+        background-color: #f5f5f5;
+        overflow: auto;
+    }
+
+    .main-content-container {
+        width: 100%;
+        background-color: white;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        overflow: auto;
+    }
+</style>
+@code {
+    private bool isAuthenticated = false;
+    private bool checkingAuth = true;
+    private async Task HandleLogout()
+    {
+        await AuthService.Logout();
+        isAuthenticated = false;
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            checkingAuth = true;
+            var authResult = await AuthService.CheckAuth();
+            isAuthenticated = authResult != null;
+        }
+        catch (Exception ex)
+        {
+            isAuthenticated = false;
+        }
+        finally
+        {
+            checkingAuth = false;
+        }
+    }
+}

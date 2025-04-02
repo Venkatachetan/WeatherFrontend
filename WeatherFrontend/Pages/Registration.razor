@@ -1,0 +1,253 @@
+﻿@page "/register"
+@layout LoginLayout
+@using MudBlazor
+@using WeatherFrontend.Services
+@using WeatherFrontend.Models
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<style>
+    /* Make the background fill the entire viewport */
+    .weather-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(135deg, #36d1dc 0%, #5b86e5 100%);
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .login-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100%;
+        padding: 0 20px;
+        box-sizing: border-box;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 450px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .login-card {
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-section {
+        background: #65c680;
+        color: white;
+        padding: 24px;
+        text-align: center;
+    }
+
+    .form-section {
+        background: white;
+        padding: 24px;
+    }
+
+    .tabs-container {
+        display: flex;
+        margin-bottom: 24px;
+    }
+
+    .tab {
+        flex: 1;
+        text-align: center;
+        padding: 12px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+
+        .tab.active {
+            border-bottom: 2px solid #65c680;
+            color: #65c680;
+            font-weight: 500;
+        }
+
+    .register-button {
+        background-color: #65c680 !important;
+        color: white !important;
+        border-radius: 24px !important;
+        padding: 12px !important;
+        height: 48px;
+    }
+
+    /* Make the cloud elements more subtle */
+    .cloud {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+    }
+
+    .cloud-1 {
+        width: 150px;
+        height: 60px;
+        top: 10%;
+        left: 10%;
+    }
+
+    .cloud-2 {
+        width: 100px;
+        height: 40px;
+        top: 20%;
+        right: 15%;
+    }
+
+    .cloud-3 {
+        width: 180px;
+        height: 70px;
+        bottom: 15%;
+        left: 5%;
+    }
+
+    .cloud-4 {
+        width: 120px;
+        height: 50px;
+        bottom: 25%;
+        right: 10%;
+    }
+</style>
+
+<div class="weather-background">
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <div class="cloud cloud-4"></div>
+
+    <div class="login-wrapper">
+        <div class="login-container">
+            <MudCard Class="login-card">
+                <div class="header-section">
+                    <MudIcon Icon="@Icons.Material.Filled.Cloud" Size="Size.Medium" Class="mb-2" />
+                    <MudText Typo="Typo.h5">Find the Weather</MudText>
+                    <MudText Typo="Typo.caption">Your daily weather companion</MudText>
+                </div>
+
+                <div class="form-section">
+                    <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">Sign Up</MudText>
+
+                    <div class="tabs-container">
+                        <div class="tab" @onclick="@(() => Navigation.NavigateTo("/login"))">
+                            <MudText>SIGN IN</MudText>
+                        </div>
+                        <div class="tab active">
+                            <MudText>SIGN UP</MudText>
+                        </div>
+                    </div>
+
+                    <MudTextField @bind-Value="model.Username"
+                                  Label="Username"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-4"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Person" />
+
+                    <MudTextField @bind-Value="model.Email"
+                                  Label="Email"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-4"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Email" />
+
+                    <MudTextField @bind-Value="model.Password"
+                                  Label="Password"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-4"
+                                  InputType="InputType.Password"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Lock" />
+
+                    <MudTextField @bind-Value="model.ConfirmPassword"
+                                  Label="Confirm Password"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-4"
+                                  InputType="InputType.Password"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Lock" />
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <MudAlert Severity="@(errorMessage.Contains("successful") ? Severity.Success : Severity.Error)"
+                                  Class="my-3"
+                                  Variant="Variant.Filled">@errorMessage</MudAlert>
+                    }
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Secondary"
+                               FullWidth="true"
+                               OnClick="HandleRegister"
+                               DisableElevation="true"
+                               Class="register-button mt-4 mb-4">
+                        SIGN UP
+                    </MudButton>
+
+                    <MudText Typo="Typo.body2" Align="Align.Center">
+                        Already have an account? <MudLink Href="/login" Underline="Underline.Hover">Sign In</MudLink>
+                    </MudText>
+                </div>
+            </MudCard>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel model = new RegisterModel();
+    private string errorMessage = "";
+
+    private async Task HandleRegister()
+    {
+        // Basic validation
+        if (string.IsNullOrWhiteSpace(model.Username))
+        {
+            errorMessage = "Username cannot be empty.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(model.Email))
+        {
+            errorMessage = "Email cannot be empty.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(model.Password))
+        {
+            errorMessage = "Password cannot be empty.";
+            return;
+        }
+        if (model.Password != model.ConfirmPassword)
+        {
+            errorMessage = "Passwords do not match.";
+            return;
+        }
+        try
+        {
+            var result = await AuthService.Register(model.Email, model.Password);
+            if (result)
+            {
+                // Show a success snackbar message and then navigate to the login page.
+                Snackbar.Add("User registered successfully !! Please log in", Severity.Success);
+                await Task.Delay(2000); // Optional delay to allow the user to see the message
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = "Registration failed. Email or username might already be in use.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred during registration: {ex.Message}";
+        }
+    }
+}

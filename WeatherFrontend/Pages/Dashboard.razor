@@ -1,0 +1,508 @@
+﻿@page "/dashboard"
+@using WeatherFrontend.Models
+@using WeatherFrontend.Services
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.WebUtilities
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject FavoriteCityService FavoriteCityService
+@inject AuthService AuthService
+@inject UserHistoryService UserHistoryService
+@using MudBlazor
+
+<div class="@GetWeatherThemeClass(currentWeather?.Weather)">
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 weather-container">
+        <MudGrid>
+            <!-- Greeting Text -->
+            <MudItem xs="12">
+                <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-3">@GetTimeBasedGreeting()</MudText>
+            </MudItem>
+
+            <!-- Main Content -->
+            <MudItem xs="12">
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
+                        @errorMessage
+                    </MudAlert>
+                }
+                <!-- Search Bar -->
+                <MudPaper Elevation="3" Class="pa-4 mb-4 search-container">
+                    <MudGrid>
+                        <MudItem xs="12" sm="9">
+                            <MudTextField @bind-Value="citySearch" Label="Enter city name" Variant="Variant.Outlined"
+                                          Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                                          OnKeyPress="HandleKeyPress" />
+                        </MudItem>
+                        <MudItem xs="12" sm="3">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                                       OnClick="@SearchWeatherByCity">Search</MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                @if (isLoading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-7" />
+                    <MudText Align="Align.Center">Getting weather data...</MudText>
+                }
+                else if (currentWeather != null)
+                {
+                    <MudGrid>
+                        <!-- Current Weather Card -->
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="3" Class="pa-6 mud-height-full position-relative weather-card">
+                                <MudGrid Justify="Justify.Center">
+                                    <MudItem xs="12" Class="d-flex justify-space-between align-center">
+                                        <MudText Typo="Typo.h4">@currentWeather.City</MudText>
+                                        <MudIconButton Icon="@(isFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                                                       Color="@(isFavorite ? Color.Error : Color.Default)"
+                                                       OnClick="ToggleFavorite"
+                                                       Size="Size.Medium"
+                                                       Title="@(isFavorite ? "Remove from favorites" : "Add to favorites")" />
+                                    </MudItem>
+
+                                    <MudItem xs="12" Class="d-flex justify-center mb-2">
+                                        <div class="weather-face">
+                                            @GetWeatherFace(currentWeather.Weather, currentWeather.Temperature)
+                                        </div>
+                                    </MudItem>
+
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.h2" Align="Align.Center">@currentWeather.Temperature</MudText>
+                                        <MudText Typo="Typo.h6" Align="Align.Center" Class="text-capitalize">@currentWeather.Weather</MudText>
+                                    </MudItem>
+
+                                    <MudItem xs="12">
+                                        <MudDivider Class="my-4" />
+                                    </MudItem>
+
+                                    <MudItem xs="6">
+                                        <MudText Align="Align.Center" class="mud-text-secondary">Wind</MudText>
+                                        <MudText Typo="Typo.h6" Align="Align.Center">@currentWeather.WindSpeed m/s</MudText>
+                                    </MudItem>
+
+                                    <MudItem xs="6">
+                                        <MudText Align="Align.Center" class="mud-text-secondary">Humidity</MudText>
+                                        <MudText Typo="Typo.h6" Align="Align.Center">@currentWeather.Humidity%</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </MudItem>
+
+                        <!-- Forecast Card -->
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="3" Class="pa-6 mud-height-full forecast-card">
+                                <MudText Typo="Typo.h5" Align="Align.Center" Class="mb-4">5-Day Forecast</MudText>
+                                @if (forecastData != null && forecastData.Count > 0)
+                                {
+                                    <MudList T="ForecastData" Clickable="false">
+                                        @foreach (var day in forecastData)
+                                        {
+                                            <MudListItem T="ForecastData">
+                                                <MudGrid>
+                                                    <MudItem xs="4">
+                                                        <MudText>@FormatDate(day.Date)</MudText>
+                                                    </MudItem>
+                                                    <MudItem xs="2">
+                                                        <div class="forecast-face">
+                                                            @GetWeatherFace(day.Weather, day.Temperature)
+                                                        </div>
+                                                    </MudItem>
+                                                    <MudItem xs="3">
+                                                        <MudText><strong>@day.Temperature</strong></MudText>
+                                                    </MudItem>
+                                                    <MudItem xs="3">
+                                                        <MudText Class="text-capitalize">@day.Weather</MudText>
+                                                    </MudItem>
+                                                </MudGrid>
+                                            </MudListItem>
+                                            @if (forecastData.IndexOf(day) < forecastData.Count - 1)
+                                            {
+                                                <MudDivider />
+                                            }
+                                        }
+                                    </MudList>
+                                }
+                                else
+                                {
+                                    <MudText Align="Align.Center">No forecast data available</MudText>
+                                }
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudText Align="Align.Center">No weather data available. Please search for a city.</MudText>
+                }
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+</div>
+
+<style>
+    .weather-container {
+        transition: all 0.5s ease;
+        padding-bottom: 20px;
+    }
+
+    .weather-card, .forecast-card, .search-container, .recent-searches {
+        transition: all 0.5s ease;
+    }
+
+    .weather-face {
+        font-size: 4rem;
+        margin-bottom: 10px;
+    }
+
+    .forecast-face {
+        font-size: 1.5rem;
+    }
+
+    /* Example Themes */
+    .theme-hot {
+        background: linear-gradient(to bottom, #ff7e00, #ff9e48);
+        color: #fff;
+    }
+
+    .theme-rain {
+        background: linear-gradient(to bottom, #2c3e50, #3498db);
+        color: #fff;
+    }
+
+    .theme-snow {
+        background: linear-gradient(to bottom, #e0e0e0, #ffffff);
+        color: #333;
+    }
+
+    .theme-cloudy {
+        background: linear-gradient(to bottom, #636e72, #b2bec3);
+        color: #fff;
+    }
+
+    .theme-clear {
+        background: linear-gradient(to bottom, #2980b9, #6dd5fa);
+        color: #fff;
+    }
+
+    .theme-night {
+        background: linear-gradient(to bottom, #0f2027, #2c5364);
+        color: #fff;
+    }
+</style>
+
+@code {
+    private string citySearch = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isLoading = true;
+
+    private WeatherData? currentWeather;
+    private List<ForecastData> forecastData = new();
+
+    private bool isFavorite = false;
+    private string userId = "anonymous";
+    private bool _isUserAuthenticated = false;
+    private string _currentUserId = string.Empty;
+    private List<string> favoriteCities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authResponse = await AuthService.CheckAuth();
+        if (authResponse != null)
+        {
+            userId = authResponse.Id;
+            _isUserAuthenticated = true;
+            _currentUserId = authResponse.Id;
+            await LoadFavoriteCities();
+        }
+        else
+        {
+            _isUserAuthenticated = false;
+            _currentUserId = string.Empty;
+        }
+        await GetLocationWeather();
+    }
+
+    private string GetTimeBasedGreeting()
+    {
+        int currentHour = DateTime.Now.Hour;
+        if (currentHour >= 5 && currentHour < 12)
+            return "Hi! Good Morning";
+        else if (currentHour >= 12 && currentHour < 18)
+            return "Hi! Good Afternoon";
+        else
+            return "Hi! Good Evening";
+    }
+
+    private async Task LoadFavoriteCities()
+    {
+        try
+        {
+            var favorites = await FavoriteCityService.GetFavoriteCities(userId);
+            favoriteCities = favorites.Select(f => f.CityName).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading favorite cities: {ex.Message}");
+            favoriteCities = new List<string>();
+        }
+    }
+
+    private async Task GetLocationWeather()
+    {
+        try
+        {
+            isLoading = true;
+            var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+            if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("city", out var cityParam))
+            {
+                citySearch = cityParam.ToString();
+                await SearchWeatherByCity();
+                return;
+            }
+            var coordinates = await GetGeolocationAsync();
+            if (coordinates != null)
+            {
+                await GetWeatherByCoordinates(coordinates.Latitude, coordinates.Longitude);
+            }
+            else
+            {
+                errorMessage = "Could not get your location. Please use the search bar.";
+                isLoading = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading weather data: {ex.Message}";
+            isLoading = false;
+        }
+    }
+
+    private async Task<GeoCoordinates?> GetGeolocationAsync()
+    {
+        try
+        {
+            return await JSRuntime.InvokeAsync<GeoCoordinates>("getGeolocation");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task GetWeatherByCoordinates(double lat, double lon)
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<WeatherData>($"api/weather/current-location?lat={lat}&lon={lon}");
+            if (response != null)
+            {
+                currentWeather = response;
+                if (!string.IsNullOrEmpty(currentWeather.City))
+                {
+                    await GetForecastByCity(currentWeather.City);
+                    CheckIfCityIsFavorite();
+                    if (_isUserAuthenticated)
+                    {
+                        await SaveSearchToHistory(currentWeather.City, currentWeather.Weather, currentWeather.Temperature);
+                    }
+                }
+            }
+            else
+            {
+                errorMessage = "Could not retrieve weather data.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading weather data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SearchWeatherByCity()
+    {
+        if (string.IsNullOrWhiteSpace(citySearch))
+        {
+            errorMessage = "Please enter a city name";
+            return;
+        }
+        try
+        {
+            isLoading = true;
+            var response = await Http.GetFromJsonAsync<WeatherData>($"api/weather/search?city={Uri.EscapeDataString(citySearch)}");
+            if (response != null)
+            {
+                currentWeather = response;
+                await GetForecastByCity(citySearch);
+                CheckIfCityIsFavorite();
+                if (_isUserAuthenticated)
+                {
+                    await SaveSearchToHistory(currentWeather.City, currentWeather.Weather, currentWeather.Temperature);
+                }
+            }
+            else
+            {
+                errorMessage = "City not found or weather data unavailable";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading weather data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveSearchToHistory(string cityName, string weatherCondition, string temperature)
+    {
+        if (_isUserAuthenticated)
+        {
+            await UserHistoryService.AddSearchHistoryAsync(cityName, weatherCondition, temperature);
+        }
+    }
+
+    private void CheckIfCityIsFavorite()
+    {
+        if (currentWeather != null && !string.IsNullOrEmpty(currentWeather.City))
+        {
+            isFavorite = favoriteCities.Any(c => c.Equals(currentWeather.City, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            isFavorite = false;
+        }
+    }
+
+    private async Task ToggleFavorite()
+    {
+        if (currentWeather == null || string.IsNullOrEmpty(currentWeather.City) || string.IsNullOrEmpty(userId))
+        {
+            errorMessage = "No city selected or you are not logged in.";
+            return;
+        }
+        try
+        {
+            if (isFavorite)
+            {
+                await FavoriteCityService.RemoveFavoriteCityByName(userId, currentWeather.City);
+                favoriteCities.RemoveAll(c => c.Equals(currentWeather.City, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                var newCity = new FavoriteCity
+                    {
+                        UserId = userId,
+                        CityName = currentWeather.City
+                    };
+                await FavoriteCityService.AddFavoriteCity(newCity);
+                favoriteCities.Add(currentWeather.City);
+            }
+            isFavorite = !isFavorite;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating favorites: {ex.Message}";
+        }
+    }
+
+    private async Task GetForecastByCity(string city)
+    {
+        if (string.IsNullOrEmpty(city))
+        {
+            forecastData = new List<ForecastData>();
+            return;
+        }
+        try
+        {
+            var response = await Http.GetFromJsonAsync<List<ForecastData>>($"api/weather/forecast?city={Uri.EscapeDataString(city)}");
+            forecastData = response ?? new List<ForecastData>();
+        }
+        catch
+        {
+            forecastData = new List<ForecastData>();
+        }
+    }
+
+    private string FormatDate(string dateString)
+    {
+        if (DateTime.TryParse(dateString, out DateTime date))
+        {
+            return date.ToString("ddd, MMM d");
+        }
+        return dateString;
+    }
+
+    private string GetWeatherThemeClass(string? description)
+    {
+        string desc = description?.ToLower() ?? "";
+        decimal temp = 0;
+        if (currentWeather != null)
+        {
+            string tempStr = currentWeather.Temperature?.Replace("°C", "").Replace("°F", "").Trim() ?? "0";
+            if (decimal.TryParse(tempStr, out decimal parsedTemp))
+            {
+                temp = parsedTemp;
+            }
+        }
+        if (temp > 30 || desc.Contains("hot") || desc.Contains("warm"))
+            return "theme-hot";
+        if (desc.Contains("rain") || desc.Contains("drizzle") || desc.Contains("thunderstorm"))
+            return "theme-rain";
+        if (desc.Contains("snow") || desc.Contains("ice") || temp < 0)
+            return "theme-snow";
+        if (desc.Contains("cloud") || desc.Contains("overcast"))
+            return "theme-cloudy";
+        if (desc.Contains("clear") || desc.Contains("sun"))
+            return "theme-clear";
+        return "theme-clear";
+    }
+
+    private string GetWeatherFace(string? description, string? temperature)
+    {
+        string desc = description?.ToLower() ?? "";
+        decimal temp = 0;
+        if (!string.IsNullOrEmpty(temperature))
+        {
+            string tempStr = temperature.Replace("°C", "").Replace("°F", "").Trim();
+            if (decimal.TryParse(tempStr, out decimal parsedTemp))
+            {
+                temp = parsedTemp;
+            }
+        }
+        if (temp > 35 || desc.Contains("hot") || desc.Contains("scorch"))
+            return "🥵";
+        if (temp > 28 || desc.Contains("warm"))
+            return "😓";
+        if (desc.Contains("rain") || desc.Contains("drizzle"))
+            return "😔";
+        if (desc.Contains("thunder") || desc.Contains("storm"))
+            return "😨";
+        if (desc.Contains("snow") || desc.Contains("ice") || temp < 0)
+            return "🥶";
+        if (desc.Contains("cloud") || desc.Contains("overcast"))
+            return "😐";
+        if (desc.Contains("fog") || desc.Contains("mist"))
+            return "😶‍🌫️";
+        if ((temp > 20 && temp < 28) || desc.Contains("pleasant"))
+            return "😊";
+        if (desc.Contains("clear") || desc.Contains("sun"))
+            return "😎";
+        if (temp < 15)
+            return "🙂";
+        return "🙂";
+    }
+
+    public class GeoCoordinates
+    {
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+    }
+}
