@@ -1,26 +1,18 @@
-# Build Stage
+# Use the official .NET SDK image
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+# Set working directory
 WORKDIR /app
 
-# Copy the project file first
+# Copy only the .csproj and restore
 COPY WeatherFrontend/WeatherFrontend.csproj ./WeatherFrontend/
+RUN dotnet restore WeatherFrontend/WeatherFrontend.csproj
 
-# Restore dependencies (caching step)
-RUN dotnet restore WeatherFrontend.csproj
+# Copy the rest of the project files
+COPY WeatherFrontend/. ./WeatherFrontend/
 
-# Copy all files (ensure your .dockerignore isn't excluding files you need)
-COPY . .
+# Set working directory to project folder
+WORKDIR /app/WeatherFrontend
 
-# Publish the app (adjust output directory as needed)
-RUN dotnet publish -c Release -o /app/out
-
-# Serve Stage
-FROM nginx:latest
-WORKDIR /usr/share/nginx/html
-COPY --from=build /app/out/wwwroot .
-
-# Expose the default nginx port
-EXPOSE 80
-
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Build the application
+RUN dotnet publish -c Release -o out
