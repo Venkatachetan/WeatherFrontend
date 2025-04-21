@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
 # Copy the project file first
-COPY WeatherFrontend.csproj ./
+COPY WeatherFrontend/WeatherFrontend.csproj ./WeatherFrontend/
 
 # Restore dependencies (caching step)
 RUN dotnet restore WeatherFrontend.csproj
